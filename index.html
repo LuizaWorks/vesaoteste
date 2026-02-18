@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <base target="_self">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expresso da Van - Gestão Pro</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ExpressoVan">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { primary: "#1e40af", secondary: "#3b82f6", success: "#10b981", warning: "#f59e0b", danger: "#ef4444", dark: "#1f2937", light: "#f9fafb" },
+                    fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .no-print, header button, nav, form, .btn-primary, .btn-delete, #loading-overlay, #area-filtros, #modal-viagem { display: none !important; }
+            body { background: #f9fafb !important; }
+            .content-section { display: block !important; margin-bottom: 2rem; }
+            #section-viagens, #section-abastecimentos, #section-despesas, #section-manutencao { display: block !important; }
+            .bg-white { border: 1px solid #e5e7eb !important; box-shadow: none !important; }
+            h2 { border-bottom: 3px solid #1e40af !important; color: #1e40af !important; padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; font-size: 1.25rem; }
+            #print-header-info { display: block !important; margin-bottom: 20px; border-bottom: 2px solid #1e40af; padding-bottom: 15px; }
+            table { border: 1px solid #e5e7eb !important; }
+            th { background-color: #f3f4f6 !important; color: #1e40af !important; }
+        }
+        .input-padrao { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 8px; outline: none; background: #fff; }
+        .input-padrao:focus { border-color: #1e40af; ring: 2px; }
+        .btn-primary { background-color: #1e40af; color: white; font-weight: bold; padding: 12px; border-radius: 8px; cursor: pointer; width: 100%; }
+        .btn-primary:hover { background-color: #1e3a8a; }
+        .btn-delete { color: #ef4444; padding: 10px; cursor: pointer; transition: 0.2s; }
+        .checkbox-label { display: inline-flex; align-items: center; cursor: pointer; padding: 6px 12px; border: 1px solid #e5e7eb; border-radius: 20px; background: white; user-select: none; transition: 0.2s; font-size: 0.85rem; margin-right: 5px; margin-bottom: 5px; }
+        .checkbox-label.checked { background-color: #dbeafe; border-color: #1e40af; color: #1e40af; font-weight: bold; }
+        .row-clicavel { cursor: pointer; transition: background 0.2s; }
+        .row-clicavel:hover { background-color: #f3f4f6; }
+        #print-header-info { display: none; }
+        .card-alerta { border-left: 6px solid transparent; transition: all 0.3s; }
+        .vencido { background-color: #fee2e2; border-left-color: #ef4444; }
+        .atencao { background-color: #fef3c7; border-left-color: #f59e0b; }
+        .ok { background-color: #dcfce7; border-left-color: #22c55e; }
+        .texto-destaque { font-size: 1.1rem; font-weight: 800; text-transform: uppercase; }
+        .texto-vermelho { color: #b91c1c; }
+        .texto-amarelo { color: #92400e; }
+        .texto-verde { color: #166534; }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50 font-sans">
+    <div id="loading-overlay" class="fixed inset-0 bg-white bg-opacity-90 z-50 flex flex-col items-center justify-center hidden"><div class="animate-spin rounded-full h-16 w-16 border-t-4 border-primary"></div><p class="mt-4 text-primary font-bold" id="loading-text">Processando...</p></div>
+    <div id="modal-viagem" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden no-print p-4"><div class="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden"><div class="p-4 flex justify-between items-center border-b"><h3 class="font-bold text-xl text-blue-800">Detalhes da Viagem</h3><button onclick="fecharModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button></div><div id="modal-conteudo" class="p-6 pt-2 space-y-6"></div><div class="p-4 bg-gray-50 text-right"><button onclick="fecharModal()" class="w-full bg-gray-200 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-300 transition uppercase">Fechar</button></div></div></div>
+
+    <header class="bg-primary text-white shadow-lg sticky top-0 z-20 no-print">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-3"><div class="bg-white p-2 rounded-full text-primary"><i class="fas fa-van-shuttle text-xl"></i></div><div><h1 class="text-xl md:text-2xl font-bold">Expresso da Van</h1><p class="text-blue-100 text-xs">Gestão Inteligente v44</p></div></div>
+            <div class="flex space-x-2"><button onclick="window.print()" class="bg-green-500 text-white px-3 py-2 rounded-lg font-bold shadow transition"><i class="fas fa-file-pdf"></i> PDF</button><button onclick="carregarDadosDoGoogle()" class="bg-white text-primary px-3 py-2 rounded-lg font-bold shadow"><i class="fas fa-sync-alt"></i></button></div>
+        </div>
+    </header>
+
+    <nav class="bg-white shadow-md z-10 no-print"><div class="container mx-auto px-4 overflow-x-auto"><div class="flex space-x-4 py-3 min-w-max"><button onclick="mudarAba('dashboard')" class="nav-btn active text-primary border-b-2 border-primary font-bold pb-1" id="btn-dashboard"><i class="fas fa-chart-line mr-1"></i> Dashboard</button><button onclick="mudarAba('manutencao')" class="nav-btn text-gray-500 hover:text-primary pb-1" id="btn-manutencao"><i class="fas fa-tools mr-1"></i> Manutenção</button><button onclick="mudarAba('viagens')" class="nav-btn text-gray-500 hover:text-primary pb-1" id="btn-viagens"><i class="fas fa-route mr-1"></i> Viagens</button><button onclick="mudarAba('abastecimentos')" class="nav-btn text-gray-500 hover:text-primary pb-1" id="btn-abastecimentos"><i class="fas fa-gas-pump mr-1"></i> Abastec.</button><button onclick="mudarAba('despesas')" class="nav-btn text-gray-500 hover:text-primary pb-1" id="btn-despesas"><i class="fas fa-wrench mr-1"></i> Despesas</button><button onclick="mudarAba('veiculos')" class="nav-btn text-gray-500 hover:text-primary pb-1" id="btn-veiculos"><i class="fas fa-bus mr-1"></i> Veículos</button></div></div></nav>
+
+    <main class="container mx-auto px-4 py-6 mb-20">
+        <div id="print-header-info"><h1 class="text-2xl font-bold text-blue-800">Relatório de Gestão - Expresso da Van</h1><span id="txt-filtro-vans">Frotas: Todas</span> | <span id="txt-filtro-dias">Período: Todo o histórico</span></div>
+        <div id="area-filtros" class="mb-6 bg-white p-4 rounded-xl shadow border-l-4 border-primary no-print"><div class="flex flex-wrap justify-between items-center mb-4 border-b pb-3"><div class="font-bold text-gray-700 flex items-center mb-2 md:mb-0"><i class="fas fa-filter mr-2 text-primary"></i> Filtros Ativos</div><select id="filtro-periodo" onchange="renderizarTudo()" class="p-2 border rounded-lg font-bold bg-blue-50"><option value="todos">Todo o Período</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option><option value="90">Últimos 90 dias</option></select></div><div id="container-checkboxes" class="flex flex-wrap mt-2"></div></div>
+
+        <section id="section-dashboard" class="content-section"><div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"><div class="bg-white p-5 rounded-xl shadow border-l-4 border-blue-600"><p class="text-gray-500 text-sm font-bold uppercase">KM Rodados</p><div id="dash-km-container"><h3 class="text-2xl font-bold text-gray-800" id="dash-km">0 km</h3></div></div><div class="bg-white p-5 rounded-xl shadow border-l-4 border-green-500"><p class="text-gray-500 text-sm font-bold uppercase">Faturamento</p><h3 class="text-2xl font-bold text-green-600" id="dash-faturamento">R$ 0,00</h3></div><div class="bg-white p-5 rounded-xl shadow border-l-4 border-red-500"><p class="text-gray-500 text-sm font-bold uppercase">Total Diesel</p><h3 class="text-2xl font-bold text-red-600" id="dash-estimado-oleo">R$ 0,00</h3></div><div class="bg-white p-5 rounded-xl shadow border-l-4 border-yellow-500"><p class="text-gray-500 text-sm font-bold uppercase">Outras Despesas (c/ Motora)</p><h3 class="text-2xl font-bold text-yellow-600" id="dash-despesas">R$ 0,00</h3></div></div><div class="bg-gray-800 rounded-xl p-6 shadow-lg text-white mb-6 print:bg-gray-800 print:text-white"><p class="text-gray-400 text-sm font-bold uppercase mb-1">Lucro Líquido</p><h2 class="text-4xl font-bold print:text-white print:border-none" id="dash-lucro" style="border:none; margin:0; padding:0">R$ 0,00</h2></div></section>
+
+        <section id="section-manutencao" class="content-section hidden">
+            <div class="mb-6 bg-white p-4 rounded-xl border-l-4 border-blue-500 shadow" id="container-alertas-top"><h3 class="font-bold text-blue-800 mb-4 text-lg border-b pb-2"><i class="fas fa-bell mr-2"></i>Status da Frota (Via Odômetro + Viagens)</h3><div id="painel-alertas" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3"><p class="text-gray-500 text-sm italic">Calculando...</p></div></div>
+            <div class="bg-white p-6 rounded-xl shadow mb-6 no-print border-l-4 border-yellow-500"><h2 class="font-bold text-lg mb-4 text-yellow-700"><i class="fas fa-tools mr-2"></i>Lançar Manutenção Realizada</h2><form onsubmit="salvarDados(event, 'manutencao')" class="grid gap-4 md:grid-cols-2"><select name="veiculo" class="input-padrao select-veiculos font-bold" required></select><input name="data" type="date" class="input-padrao" required><select name="servico" id="select-servico" class="input-padrao font-bold" onchange="calcularProximaTroca()" required><option value="" data-intervalo="0">Selecione o Serviço...</option><option value="Troca de Oleo" data-intervalo="10000">Troca de Óleo (10k)</option><option value="Filtro de Oleo" data-intervalo="10000">Filtro de Óleo (10k)</option><option value="Filtro de Combustivel" data-intervalo="15000">Filtro de Combustível (15k)</option><option value="Filtro de Ar" data-intervalo="20000">Filtro de Ar (20k)</option><option value="Correia Dentada" data-intervalo="50000">Correia Dentada (50k)</option><option value="Pastilhas de Freio" data-intervalo="30000">Pastilhas de Freio (30k)</option><option value="Oleo Lubrificante" data-intervalo="10000">Óleo Lubrificante (10k)</option><option value="Outros" data-intervalo="0">Outros</option></select><input name="km" id="input-km-atual" type="text" inputmode="decimal" placeholder="KM Atual (No momento da troca)" class="input-padrao" oninput="calcularProximaTroca()" required><input name="proxima_troca" id="input-proxima-troca" type="text" inputmode="decimal" placeholder="Próxima Troca (Automático)" class="input-padrao bg-gray-100" readonly><input name="valor" type="text" inputmode="decimal" placeholder="Custo (R$)" class="input-padrao"><input name="obs" placeholder="Marca da peça / Obs" class="input-padrao md:col-span-2"><button type="submit" class="btn-primary md:col-span-2 bg-yellow-600 hover:bg-yellow-700">Salvar Manutenção</button></form></div><h3 class="font-bold text-gray-700 mb-2 px-2">Histórico de Trocas</h3><div id="lista-manutencao" class="space-y-2"></div>
+        </section>
+
+        <section id="section-viagens" class="content-section hidden">
+            <div class="bg-white p-6 rounded-xl shadow mb-6 no-print">
+                <h2 class="font-bold text-lg mb-4 text-primary"><i class="fas fa-plus-circle mr-2"></i>Nova Viagem</h2>
+                <form onsubmit="salvarDados(event, 'viagens')" class="grid gap-4 md:grid-cols-2">
+                    <select name="veiculo" class="input-padrao select-veiculos" required></select>
+                    <input name="data" type="date" class="input-padrao" required>
+                    <input name="origem" placeholder="Origem" class="input-padrao" required>
+                    <input name="destino" placeholder="Destino" class="input-padrao" required>
+                    <input name="km" type="text" inputmode="decimal" placeholder="KM Percorrido" class="input-padrao" required>
+                    <input name="frete" type="text" inputmode="decimal" placeholder="Valor do Frete" class="input-padrao" required>
+                    <input name="valorlitro" type="text" inputmode="decimal" placeholder="Preço Diesel (Ex: 6.11)" class="input-padrao">
+                    <input name="motorista" type="text" inputmode="decimal" placeholder="Diária Motorista (Opcional)" class="input-padrao bg-blue-50 border-blue-200">
+                    <input name="obs" placeholder="Observações (Ex: Turismo, Fretamento)" class="input-padrao md:col-span-2">
+                    <button type="submit" class="btn-primary md:col-span-2">Salvar Viagem</button>
+                </form>
+            </div>
+            <div class="overflow-x-auto bg-white rounded-xl shadow"><table class="w-full text-sm text-left"><thead class="bg-gray-100 uppercase text-xs"><tr><th class="px-4 py-3">Data</th><th class="px-4 py-3">Van / Rota / Obs</th><th class="px-4 py-3">Valor</th><th class="px-4 py-3 text-right no-print">Ação</th></tr></thead><tbody id="lista-viagens"></tbody></table></div>
+        </section>
+        
+        <section id="section-abastecimentos" class="content-section hidden"><div class="bg-white p-6 rounded-xl shadow mb-6 no-print"><h2 class="font-bold text-lg mb-4 text-primary"><i class="fas fa-gas-pump mr-2"></i>Abastecimento</h2><form onsubmit="salvarDados(event, 'abastecimentos')" class="grid gap-4 md:grid-cols-2"><select name="veiculo" class="input-padrao select-veiculos" required></select><input name="data" type="date" class="input-padrao" required><input name="litros" type="text" inputmode="decimal" placeholder="Litros"><input name="valor" type="text" inputmode="decimal" placeholder="Valor Total"><input name="posto" placeholder="Posto" class="input-padrao md:col-span-2"><button type="submit" class="btn-primary md:col-span-2">Salvar</button></form></div><div id="lista-abastecimentos" class="space-y-2"></div></section>
+        <section id="section-despesas" class="content-section hidden"><div class="bg-white p-6 rounded-xl shadow mb-6 no-print"><h2 class="font-bold text-lg mb-4 text-primary"><i class="fas fa-wrench mr-2"></i>Nova Despesa</h2><form onsubmit="salvarDados(event, 'despesas')" class="grid gap-4 md:grid-cols-2"><select name="veiculo" class="input-padrao select-veiculos" required></select><input name="data" type="date" class="input-padrao" required><select name="tipo" class="input-padrao"><option value="Manutencao">Manutenção</option><option value="Oleo">Óleo</option><option value="Pneus">Pneus</option><option value="Outros">Outros</option></select><input name="valor" type="text" inputmode="decimal" placeholder="Valor" class="input-padrao"><input name="obs" placeholder="O que foi? (Ex: Radiador, Lâmpada)" class="input-padrao md:col-span-2"><button type="submit" class="btn-primary md:col-span-2">Salvar Despesa</button></form></div><div id="lista-despesas" class="space-y-2"></div></section>
+        
+        <section id="section-veiculos" class="content-section hidden no-print">
+            <div class="bg-blue-50 p-6 rounded-xl shadow mb-6 no-print border-l-4 border-blue-600">
+                <h2 class="font-bold text-lg mb-4 text-blue-800"><i class="fas fa-tachometer-alt mr-2"></i>Atualizar Odômetro</h2>
+                <div class="grid gap-4 md:grid-cols-3 items-end">
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">Selecione a Van</label><select id="odometro-veiculo" class="input-padrao select-veiculos font-bold"></select></div>
+                    <div><label class="block text-xs font-bold text-gray-500 mb-1">KM Atual (Painel)</label><input id="odometro-valor" type="text" inputmode="decimal" placeholder="Ex: 150500" class="input-padrao"></div>
+                    <button onclick="atualizarOdometro()" class="btn-primary bg-blue-600 hover:bg-blue-700 h-[46px]">ATUALIZAR KM</button>
+                </div>
+                <p class="text-xs text-blue-400 mt-2 italic">* Isso atualiza o KM oficial da van para os cálculos de manutenção.</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow mb-6 no-print">
+                <h2 class="font-bold text-lg mb-4 text-primary"><i class="fas fa-bus mr-2"></i>Novo Veículo</h2>
+                <form onsubmit="salvarDados(event, 'veiculos')" class="grid gap-4 md:grid-cols-2">
+                    <input name="nome" placeholder="Nome da Van" class="input-padrao" required>
+                    <input name="placa" placeholder="Placa" class="input-padrao">
+                    <input name="consumo" type="text" inputmode="decimal" placeholder="Consumo Médio (KM/L)">
+                    <input name="km_atual" type="text" inputmode="decimal" placeholder="KM Inicial (Odômetro)">
+                    <button type="submit" class="btn-primary md:col-span-2">Salvar Veículo</button>
+                </form>
+            </div>
+            <div id="lista-veiculos" class="space-y-3"></div>
+        </section>
+    </main>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbz6BhO_SsoYGqxeJOi2S9oLzXFSMUe3XWoHv2Y8hLSO2oT824tiGwKcx_b_xRR3v0XEzA/exec";
+        
+        let DB = { veiculos: [], viagens: [], abastecimentos: [], despesas: [], manutencao: [] };
+        let veiculosSelecionados = [];
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('App registrado:', reg.scope))
+                    .catch(err => console.log('Erro ao registrar App:', err));
+            });
+        }
+
+        async function carregarDadosDoGoogle() {
+            mostrarLoading(true, "Sincronizando...");
+            try {
+                const response = await fetch(API_URL);
+                const data = await response.json();
+                DB = { veiculos: data.veiculos || [], viagens: data.viagens || [], abastecimentos: data.abastecimentos || [], despesas: data.despesas || [], manutencao: data.manutencao || [] };
+                inicializarFiltros();
+                renderizarTudo();
+            } catch (e) { alert("Erro de conexão."); }
+            finally { mostrarLoading(false); }
+        }
+
+        async function atualizarOdometro() {
+            const nomeVan = document.getElementById('odometro-veiculo').value;
+            const novoKm = num(document.getElementById('odometro-valor').value);
+            if (!nomeVan || novoKm <= 0) { alert("Selecione a van e digite um KM válido."); return; }
+            const vanAtual = DB.veiculos.find(v => v.nome === nomeVan);
+            if (!vanAtual) return;
+            mostrarLoading(true, "Atualizando Odômetro...");
+            try {
+                await fetch(API_URL, { method: "POST", body: JSON.stringify({ aba: "veiculos", acao: "excluir", dados: { id: String(vanAtual.id) } }) });
+                const novaVan = { ...vanAtual, id: Date.now().toString(), km_atual: novoKm };
+                await fetch(API_URL, { method: "POST", body: JSON.stringify({ aba: "veiculos", acao: "salvar", dados: novaVan }) });
+                document.getElementById('odometro-valor').value = "";
+                alert("KM Atualizado com Sucesso!");
+                carregarDadosDoGoogle();
+            } catch (e) { alert("Erro ao atualizar."); mostrarLoading(false); }
+        }
+
+        function calcularProximaTroca() {
+            const select = document.getElementById('select-servico');
+            const kmAtual = num(document.getElementById('input-km-atual').value); 
+            const intervalo = parseInt(select.options[select.selectedIndex].getAttribute('data-intervalo')) || 0;
+            if (intervalo > 0 && kmAtual > 0) document.getElementById('input-proxima-troca').value = kmAtual + intervalo;
+            else document.getElementById('input-proxima-troca').value = "";
+        }
+
+        function num(v) { if (!v) return 0; if (typeof v === 'number') return v; let n = v.toString().replace("R$", "").replace(/\s/g, ""); if (n.includes(",") && n.includes(".")) n = n.replace(".", ""); n = n.replace(",", "."); return parseFloat(n) || 0; }
+        function formatarData(d) { if (!d) return ""; const p = d.split('T')[0].split('-'); return `${p[2]}/${p[1]}/${p[0]}`; }
+        function converterParaDataObj(d) { if (!d) return new Date(0); let ano, mes, dia; if(d.includes('T')) { const p = d.split('T')[0].split('-'); ano = p[0]; mes = p[1]; dia = p[2]; } else if (d.includes('-')) { const p = d.split('-'); ano = p[0]; mes = p[1]; dia = p[2]; } else { return new Date(0); } return new Date(ano, mes - 1, dia); }
+
+        function abrirModal(id) {
+            const v = DB.viagens.find(i => i.id == id);
+            if (!v) return;
+            const van = DB.veiculos.find(veic => veic.nome === v.veiculo);
+            const media = van ? num(van.consumo) || 9 : 9;
+            const precoD = num(v.valorlitro) || 6.11;
+            const km = num(v.km);
+            const frete = num(v.frete);
+            const motora = num(v.motorista); 
+            const litrosGasto = km / media;
+            const custoOleo = litrosGasto * precoD;
+            const custoKm = km > 0 ? custoOleo / km : 0;
+            const sobra = frete - custoOleo - motora; 
+            document.getElementById('modal-conteudo').innerHTML = `<div class="text-sm text-gray-500 font-medium mb-1">${formatarData(v.data)} - ${v.veiculo}</div><div class="bg-blue-50 p-4 rounded-xl border border-blue-100"><p class="text-[10px] text-blue-500 font-bold uppercase mb-1">ROTA</p><p class="text-xl font-bold text-gray-800 uppercase">${v.origem} -> ${v.destino}</p></div><div class="grid grid-cols-2 gap-4"><div class="bg-gray-50 p-4 rounded-xl"><p class="text-xs text-gray-400 font-bold mb-1">Faturamento</p><p class="text-xl font-bold text-green-600">R$ ${frete.toFixed(2)}</p></div><div class="bg-gray-50 p-4 rounded-xl"><p class="text-xs text-gray-400 font-bold mb-1">Distância</p><p class="text-xl font-bold text-gray-800">${km} km</p></div></div>${motora > 0 ? `<div class="bg-red-50 p-2 rounded-lg border border-red-100 flex justify-between px-4 mt-2"><span class="text-xs text-red-400 font-bold uppercase pt-1">DIÁRIA MOTORISTA:</span><span class="font-bold text-red-600">R$ ${motora.toFixed(2)}</span></div>` : ''}${v.obs ? `<div class="bg-yellow-50 p-3 rounded-lg border border-yellow-100 text-sm italic text-gray-600"><strong>Obs:</strong> ${v.obs}</div>` : ''}<div class="pt-2 border-t border-gray-100"><div class="flex items-center text-gray-700 font-bold mb-4"><i class="fas fa-calculator mr-2 text-sm"></i> Análise de Custo & Consumo</div><div class="grid grid-cols-2 gap-y-4"><div><p class="text-xs text-gray-400 font-bold">Diesel:</p><p class="font-bold text-gray-800">${litrosGasto.toFixed(1)} L (${media} km/l)</p></div><div><p class="text-xs text-gray-400 font-bold">Custo p/ KM:</p><p class="font-bold text-red-500">R$ ${custoKm.toFixed(2)} /km</p></div><div class="col-span-2 bg-red-50 p-3 rounded-lg border border-red-100 mt-2"><p class="text-xs text-red-400 font-bold uppercase mb-1">CUSTO DIESEL NESSA VIAGEM:</p><p class="text-2xl font-bold text-red-600">R$ ${custoOleo.toFixed(2)}</p></div><div class="col-span-2 pt-2"><p class="text-xs text-gray-400 font-bold uppercase">Sobra Real (Frete - Diesel - Motora):</p><p class="font-bold text-blue-600 text-2xl">R$ ${sobra.toFixed(2)}</p></div></div></div>`;
+            document.getElementById('modal-viagem').classList.remove('hidden');
+        }
+
+        function renderizarTudo() {
+            const viagens = filtrarLista(DB.viagens || []).sort((a,b) => converterParaDataObj(b.data) - converterParaDataObj(a.data));
+            const abastecimentos = filtrarLista(DB.abastecimentos || []);
+            const despesas = filtrarLista(DB.despesas || []);
+            const manutencoes = filtrarLista(DB.manutencao || []).sort((a,b) => converterParaDataObj(b.data) - converterParaDataObj(a.data));
+            const p = document.getElementById('filtro-periodo').value;
+            document.getElementById('txt-filtro-dias').innerText = "Período: " + (p === 'todos' ? 'Todo o histórico' : `Últimos ${p} dias`);
+            document.getElementById('txt-filtro-vans').innerText = "Frotas: " + (veiculosSelecionados.length === DB.veiculos.length ? "Todas" : veiculosSelecionados.join(", "));
+            
+            let kmT = 0, faturamentoT = 0, oleoT = 0, totalMotorista = 0, kmPorVeiculo = {};
+            viagens.forEach(v => { const km = num(v.km); const van = DB.veiculos.find(veic => veic.nome === v.veiculo); const media = van ? num(van.consumo) || 9 : 9; kmT += km; faturamentoT += num(v.frete); oleoT += (km / media) * (num(v.valorlitro) || 6.11); totalMotorista += num(v.motorista); kmPorVeiculo[v.veiculo] = (kmPorVeiculo[v.veiculo] || 0) + km; });
+            
+            const totalAbastec = abastecimentos.reduce((a, c) => a + num(c.valor), 0);
+            const dieselConsolidado = oleoT + totalAbastec;
+            const totalOutrasDespesas = despesas.reduce((a, c) => a + num(c.valor), 0);
+            const totalManutencao = manutencoes.reduce((a, c) => a + num(c.valor), 0);
+            const totalGeralDespesas = totalOutrasDespesas + totalManutencao;
+            
+            document.getElementById('dash-km-container').innerHTML = `<h3 class="text-2xl font-bold text-gray-800">${kmT} km</h3><div class="mt-1">${Object.entries(kmPorVeiculo).map(([n, k]) => `<p class="text-[10px] italic text-gray-500 leading-tight">${n}: ${k} km</p>`).join('')}</div>`;
+            document.getElementById('dash-faturamento').innerText = "R$ " + faturamentoT.toFixed(2);
+            document.getElementById('dash-estimado-oleo').innerText = "R$ " + dieselConsolidado.toFixed(2);
+            document.getElementById('dash-despesas').innerText = "R$ " + (totalGeralDespesas + totalMotorista).toFixed(2);
+            document.getElementById('dash-lucro').innerText = "R$ " + (faturamentoT - dieselConsolidado - totalGeralDespesas - totalMotorista).toFixed(2);
+            
+            document.getElementById('lista-viagens').innerHTML = viagens.map(v => { const motoraValor = num(v.motorista); return `<tr class="border-b row-clicavel" onclick="abrirModal('${v.id}')"><td class="px-4 py-3 font-medium">${formatarData(v.data)}</td><td class="px-4 py-3 font-medium text-gray-800 uppercase text-xs">${v.veiculo} ${motoraValor > 0 ? `<div class="text-[10px] text-red-500 font-bold mt-1"><i class="fas fa-user-tie mr-1"></i>Motora: R$ ${motoraValor.toFixed(0)}</div>` : ''}<br><span class="text-sm font-normal text-gray-600">${v.origem} → ${v.destino}</span>${v.obs ? `<br><span class="text-[10px] text-blue-500 lowercase italic font-bold">obs: ${v.obs}</span>` : ''}</td><td class="px-4 py-3 text-green-600 font-bold">R$ ${num(v.frete).toFixed(2)}</td><td class="px-4 py-3 text-right no-print" onclick="event.stopPropagation()"><button onclick="excluirItem('${v.id}', 'viagens')" class="btn-delete"><i class="fas fa-trash"></i></button></td></tr>` }).join('');
+            document.getElementById('lista-abastecimentos').innerHTML = abastecimentos.sort((a,b) => converterParaDataObj(b.data) - converterParaDataObj(a.data)).map(a => `<div class="bg-white p-3 rounded shadow border-l-4 border-red-500 flex justify-between items-center mb-2"><div><p class="font-bold uppercase text-xs">${a.veiculo} - ${a.posto}</p><p class="text-xs text-gray-500">${formatarData(a.data)} • <strong>${a.litros || 0} L</strong></p></div><div class="text-right flex items-center space-x-3"><div><span class="block font-bold text-red-600">- R$ ${num(a.valor).toFixed(2)}</span></div><button onclick="excluirItem('${a.id}', 'abastecimentos')" class="btn-delete no-print"><i class="fas fa-trash"></i></button></div></div>`).join('');
+            document.getElementById('lista-despesas').innerHTML = despesas.sort((a,b) => converterParaDataObj(b.data) - converterParaDataObj(a.data)).map(d => `<div class="bg-white p-3 rounded shadow border-l-4 border-yellow-500 flex justify-between items-center mb-2"><div><p class="font-bold uppercase text-xs">${d.veiculo} - ${d.tipo}</p>${d.obs ? `<p class="text-[10px] text-yellow-600 italic font-bold">obs: ${d.obs}</p>` : ''}<p class="text-xs">${formatarData(d.data)}</p></div><div class="flex items-center space-x-3"><span class="font-bold text-yellow-600">- R$ ${num(d.valor).toFixed(2)}</span><button onclick="excluirItem('${d.id}', 'despesas')" class="btn-delete no-print"><i class="fas fa-trash"></i></button></div></div>`).join('');
+            document.getElementById('lista-manutencao').innerHTML = manutencoes.map(m => `<div class="bg-white p-3 rounded shadow border-l-4 border-blue-500 flex justify-between items-center mb-2"><div><p class="font-bold uppercase text-xs text-blue-700">${m.veiculo} - ${m.servico}</p><p class="text-xs text-gray-500">${formatarData(m.data)} | Trocado em: ${m.km} <br><strong>Próx: ${m.proxima_troca}</strong></p>${m.obs ? `<p class="text-[10px] italic text-gray-400">${m.obs}</p>` : ''}</div><div class="flex items-center space-x-3"><span class="font-bold text-red-600">- R$ ${num(m.valor).toFixed(2)}</span><button onclick="excluirItem('${m.id}', 'manutencao')" class="btn-delete no-print"><i class="fas fa-trash"></i></button></div></div>`).join('');
+            
+            const painel = document.getElementById('painel-alertas');
+            if (manutencoes.length > 0) {
+                let status = {};
+                manutencoes.forEach(m => { 
+                    if (!status[m.veiculo]) status[m.veiculo] = {}; 
+                    if (!status[m.veiculo][m.servico] || num(m.km) > status[m.veiculo][m.servico].kmTroca) { 
+                        const vanObj = DB.veiculos.find(v => v.nome === m.veiculo);
+                        // LÓGICA DO ODÔMETRO + VIAGENS POSTERIORES
+                        let kmBase = (vanObj && num(vanObj.km_atual) > 0) ? num(vanObj.km_atual) : num(m.km);
+                        let kmAdicional = 0;
+                        // Soma viagens feitas DEPOIS da última atualização do Odômetro (baseado no ID/Timestamp)
+                        if (vanObj && vanObj.id) {
+                            let tripsAfter = DB.viagens.filter(trip => trip.veiculo === m.veiculo && parseFloat(trip.id) > parseFloat(vanObj.id));
+                            kmAdicional = tripsAfter.reduce((acc, t) => acc + num(t.km), 0);
+                        }
+                        
+                        let kmAtual = kmBase + kmAdicional;
+                        let proximaTroca = num(m.proxima_troca); 
+                        let faltam = proximaTroca - kmAtual;
+                        status[m.veiculo][m.servico] = { kmTroca: num(m.km), kmAtual: kmAtual, prox: proximaTroca, faltam: faltam }; 
+                    } 
+                });
+                let html = "";
+                for (let [van, servicos] of Object.entries(status)) {
+                    let kmCabecalho = servicos[Object.keys(servicos)[0]].kmAtual;
+                    let listaServicos = Object.entries(servicos).sort((a, b) => a[1].faltam - b[1].faltam);
+                    html += `<div class="bg-white p-4 rounded-xl shadow-lg border border-gray-200 mb-2"><div class="font-bold text-xl text-gray-800 mb-3 border-b pb-2 flex justify-between items-center">${van} <span class="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">ATUAL (EST): ${kmCabecalho} km</span></div><div class="space-y-3">`;
+                    for (let [s, d] of listaServicos) { if (d.prox > 0) { let classeCard = "", classeTexto = "", icone = "", mensagem = ""; if (d.faltam <= 0) { classeCard = "vencido"; classeTexto = "texto-vermelho texto-destaque"; icone = "⚠️ VENCEU"; mensagem = `Passou ${Math.abs(d.faltam).toFixed(0)} km`; } else if (d.faltam < 1000) { classeCard = "atencao"; classeTexto = "texto-amarelo font-bold"; icone = "⚠️ Atenção"; mensagem = `Faltam ${d.faltam.toFixed(0)} km`; } else { classeCard = "ok"; classeTexto = "texto-verde font-bold"; icone = "✅ OK"; mensagem = `Faltam ${d.faltam.toFixed(0)} km`; } html += `<div class="card-alerta ${classeCard} p-3 rounded shadow-sm"><div class="flex justify-between items-center"><span class="font-bold text-gray-700">${s}</span><span class="${classeTexto}">${icone}</span></div><div class="flex justify-between mt-1 text-sm"><span class="text-gray-500">Troca: ${d.prox}</span><span class="${classeTexto}">${mensagem}</span></div></div>`; } }
+                    html += `</div></div>`;
+                }
+                painel.innerHTML = html;
+            } else { painel.innerHTML = '<p class="text-gray-400 italic text-sm">Nenhuma manutenção registrada.</p>'; }
+            document.getElementById('lista-veiculos').innerHTML = (DB.veiculos || []).map(v => `<div class="bg-white p-4 rounded shadow border-l-4 border-blue-500 flex justify-between items-center mb-2"><div><span class="font-bold block text-lg">${v.nome}</span><span class="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded mt-1 inline-block">ODÔMETRO: ${v.km_atual || 0} km</span><br><span class="text-xs text-gray-500 mt-1 block">${v.placa} | ${v.consumo}km/l</span></div><button onclick="excluirItem('${v.id}', 'veiculos')" class="btn-delete no-print"><i class="fas fa-trash"></i></button></div>`).join('');
+            atualizarSelects();
+        }
+
+        async function salvarDados(e, aba) { e.preventDefault(); mostrarLoading(true, "Salvando..."); const d = Object.fromEntries(new FormData(e.target).entries()); if(!d.id) d.id = Date.now().toString(); try { await fetch(API_URL, { method: "POST", body: JSON.stringify({ aba: aba, acao: "salvar", dados: d }) }); carregarDadosDoGoogle(); e.target.reset(); } catch (err) { alert("Erro."); mostrarLoading(false); } }
+        async function excluirItem(id, aba) { if(!confirm("Tem certeza?")) return; mostrarLoading(true, "Apagando..."); try { const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ aba: aba, acao: "excluir", dados: { id: String(id) } }) }); carregarDadosDoGoogle(); } catch (err) { alert("Erro de conexão."); mostrarLoading(false); } }
+        function mostrarLoading(s, t) { document.getElementById('loading-overlay').classList.toggle('hidden', !s); if(t) document.getElementById('loading-text').innerText = t; }
+        function fecharModal() { document.getElementById('modal-viagem').classList.add('hidden'); }
+        function mudarAba(id) { document.querySelectorAll('.content-section').forEach(e => e.classList.add('hidden')); document.getElementById('section-'+id).classList.remove('hidden'); document.querySelectorAll('.nav-btn').forEach(b => b.className = "nav-btn text-gray-500 pb-1"); document.getElementById('btn-'+id).className = "nav-btn active text-primary border-b-2 border-primary font-bold pb-1"; }
+        function filtrarLista(lista) { const p = document.getElementById('filtro-periodo').value; let f = (lista || []).filter(i => veiculosSelecionados.includes(i.veiculo)); if(p !== 'todos') { const hoje = new Date(); hoje.setHours(0,0,0,0); const limite = new Date(hoje); limite.setDate(hoje.getDate() - parseInt(p)); f = f.filter(i => converterParaDataObj(i.data) >= limite); } return f; }
+        function inicializarFiltros() { const vens = (DB.veiculos || []).map(v => v.nome); if(veiculosSelecionados.length === 0) veiculosSelecionados = [...vens]; document.getElementById('container-checkboxes').innerHTML = vens.map(v => `<label class="checkbox-label ${veiculosSelecionados.includes(v)?'checked':''}" onclick="event.preventDefault(); toggleVeiculo('${v}')"><input type="checkbox" ${veiculosSelecionados.includes(v)?'checked':''}>${v}</label>`).join(''); }
+        function toggleVeiculo(n) { veiculosSelecionados = veiculosSelecionados.includes(n) ? veiculosSelecionados.filter(x=>x!==n) : [...veiculosSelecionados, n]; inicializarFiltros(); renderizarTudo(); }
+        function atualizarSelects() { const h = '<option value="">Van...</option>' + (DB.veiculos || []).map(v => `<option value="${v.nome}">${v.nome}</option>`).join(''); document.querySelectorAll('.select-veiculos').forEach(s => { const v = s.value; s.innerHTML = h; s.value = v; }); }
+        carregarDadosDoGoogle();
+    </script>
+</body>
+</html>
